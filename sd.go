@@ -32,6 +32,7 @@ func (wd weakdata) Bytes() []byte {
 	synt := (*reflect.SliceHeader)(unsafe.Pointer(&returnslice))
 	synt.Data = wd.data
 	synt.Len = wd.length
+	synt.Cap = wd.length
 	return returnslice
 }
 
