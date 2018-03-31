@@ -19,6 +19,8 @@ type weakdata struct {
 	length int
 }
 
+type hash uint32
+
 func (wd weakdata) String() string {
 	var returnstring string
 	synt := (*reflect.StringHeader)(unsafe.Pointer(&returnstring))
@@ -36,8 +38,8 @@ func (wd weakdata) Bytes() []byte {
 	return returnslice
 }
 
-var pointermap = make(map[uintptr]int)  // Pointer -> Length
-var hashmap = make(map[uint32]weakdata) // XXHASH -> Pointer
+var pointermap = make(map[uintptr]hash) // Pointer -> HASH
+var hashmap = make(map[hash]weakdata)   // HASH -> Pointer
 
 func Size() int {
 	lock.RLock()
@@ -47,11 +49,11 @@ func Size() int {
 
 func ByteCount() int {
 	lock.RLock()
-	defer lock.RUnlock()
 	var bytes int
-	for _, length := range pointermap {
-		bytes += length
+	for _, ws := range hashmap {
+		bytes += ws.length
 	}
+	lock.RUnlock()
 	return bytes
 }
 
@@ -65,8 +67,8 @@ func Flush() {
 	}
 
 	// Clear maps
-	pointermap = make(map[uintptr]int)
-	hashmap = make(map[uint32]weakdata)
+	pointermap = make(map[uintptr]hash)
+	hashmap = make(map[hash]weakdata)
 
 	lock.Unlock()
 }
@@ -78,10 +80,10 @@ func BS(in []byte) string {
 		return ""
 	}
 
-	h := xxhash.Checksum32(in)
+	h := hash(xxhash.Checksum32(in))
 	lock.RLock()
 	ws, found := hashmap[h]
-	lock.RUnlock() // not before we have a GC pointer above us
+	lock.RUnlock() // not before we have a GC prevending structure with the pointer above us
 	if found {
 		if !bytes.Equal(ws.Bytes(), in) {
 			return string(in) // Collision
@@ -101,7 +103,7 @@ func BS(in []byte) string {
 
 	lock.Lock()
 	hashmap[h] = ws
-	pointermap[ws.data] = ws.length
+	pointermap[ws.data] = h
 	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap)
 	lock.Unlock()
 
@@ -115,7 +117,7 @@ func S(in string) string {
 		return in
 	}
 
-	h := xxhash.ChecksumString32(in)
+	h := hash(xxhash.ChecksumString32(in))
 	lock.RLock()
 	ws, found := hashmap[h]
 	lock.RUnlock() // not before we have a GC pointer above us
@@ -138,7 +140,7 @@ func S(in string) string {
 
 	lock.Lock()
 	hashmap[h] = ws
-	pointermap[ws.data] = ws.length
+	pointermap[ws.data] = h
 	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap)
 	lock.Unlock()
 	return ws.String()
@@ -159,7 +161,7 @@ func B(in []byte) []byte {
 		return in
 	}
 
-	h := xxhash.Checksum32(in)
+	h := hash(xxhash.Checksum32(in))
 	lock.RLock()
 	ws, found := hashmap[h]
 	lock.RUnlock() // not before we have a GC pointer above us
@@ -182,7 +184,7 @@ func B(in []byte) []byte {
 
 	lock.Lock()
 	hashmap[h] = ws
-	pointermap[ws.data] = ws.length
+	pointermap[ws.data] = h
 	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap)
 	lock.Unlock()
 
@@ -193,15 +195,10 @@ func B(in []byte) []byte {
 func removefromsmap(in *byte) {
 	u := uintptr(unsafe.Pointer(in))
 	lock.Lock()
-	len, found := pointermap[u]
+	h, found := pointermap[u]
 	if !found {
 		panic("dedup map mismatch")
 	}
-	ws := weakdata{
-		data:   u,
-		length: len,
-	}
-	h := xxhash.Checksum32(ws.Bytes())
 	delete(pointermap, u)
 	delete(hashmap, h)
 	lock.Unlock()
