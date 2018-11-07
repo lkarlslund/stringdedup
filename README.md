@@ -81,8 +81,9 @@ This package uses some tricks, that *may* break at any time, if the Golang devel
 - Weak references by using a map of uintptr's
 - Strings are removed from the deduplication map by using the SetFinalizer method. That means you can't use SetFinalizer on the strings that you put into or get back from the package. Golang really doesn't want you to use SetFinalizer, they see it as a horrible kludge, but I've found no other way of doing weak references with cleanup
 - The strings are hash indexed via a 32-bit XXHASH. This is not a crypto safe hashing algorithm, but we're not doing this to prevent malicious collisions. This is about statistics, and I'd guess that you would have to store more than 400 million strings before you start to run into problems. Strings are validated before they're returned, so you will never get invalid data back. You could optimize this away if you're feeling really lucky.
+- I added xxxxx64(xxx) variants of most calls, using a 64-bit xxhash.
 - You can choose to purge the deduplication index, to free memory. New deduplicated strings start over, so now you might get duplicate strings anyway. Again, this is for specific scenarios.
 
-This should work with at least Golang 1.8, 1.9 and 1.10 on x86 / x64. Please let me know your experiences.
+This should work with at least Golang 1.8, 1.9, 1.10 and 1.11 on x86 / x64. Please let me know your experiences.
 
 Twitter: @lkarlslund

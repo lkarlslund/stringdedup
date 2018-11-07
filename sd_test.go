@@ -18,8 +18,8 @@ func TestGC(t *testing.T) {
 	lock.RLock()
 	runtime.GC()
 	time.Sleep(time.Millisecond * 100) // Let finalizers run
-	t.Log("Items in cache:", len(hashmap), len(pointermap))
-	if len(hashmap) == 0 {
+	t.Log("Items in cache:", len(hashmap32), len(pointermap32))
+	if len(hashmap32) == 0 {
 		t.Fatal("Deduplication map is empty")
 	}
 	lock.RUnlock()
@@ -28,8 +28,8 @@ func TestGC(t *testing.T) {
 	time.Sleep(time.Millisecond * 100) // Let finalizers run
 	runtime.GC()                       // Clean up
 	lock.RLock()
-	t.Log("Items in cache:", len(hashmap), len(pointermap))
-	if len(hashmap) != 0 {
+	t.Log("Items in cache:", len(hashmap32), len(pointermap32))
+	if len(hashmap32) != 0 {
 		t.Fatal("Deduplication map is not empty")
 	}
 	lock.RUnlock()
