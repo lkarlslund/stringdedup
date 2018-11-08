@@ -56,7 +56,7 @@ func BS(in []byte) string {
 	ws, found := hashmap32[h]
 	lock.RUnlock() // not before we have a GC prevending structure with the pointer above us
 	if found {
-		if !bytes.Equal(ws.Bytes(), in) {
+		if ValidateResults && !bytes.Equal(ws.Bytes(), in) {
 			return string(in) // Collision
 		}
 		return ws.String() // Return found as string
@@ -94,7 +94,7 @@ func S(in string) string {
 	lock.RUnlock() // not before we have a GC pointer above us
 	if found {
 		outstring := ws.String()
-		if outstring != in {
+		if ValidateResults && outstring != in {
 			return in // Collision
 		}
 		return outstring
@@ -134,10 +134,11 @@ func B(in []byte) []byte {
 	ws, found := hashmap32[h]
 	lock.RUnlock() // not before we have a GC pointer above us
 	if found {
-		if !bytes.Equal(ws.Bytes(), in) {
+		founddata := ws.Bytes()
+		if ValidateResults && !bytes.Equal(founddata, in) {
 			return in // Collision
 		}
-		return ws.Bytes() // Return found as string
+		return founddata // Return found as string
 	}
 
 	// Alright, we'll make a weak reference

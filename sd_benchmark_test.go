@@ -69,6 +69,34 @@ func BenchmarkSDRandom(b *testing.B) {
 	}
 }
 
+func BenchmarkSDRandomNoValidate(b *testing.B) {
+	ValidateResults = false
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		RandomBytes(bs)
+		s[n] = BS(bs)
+	}
+	ValidateResults = true
+}
+
+func BenchmarkSD64Random(b *testing.B) {
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		RandomBytes(bs)
+		s[n] = BS64(bs)
+	}
+}
+
+func BenchmarkSD64RandomNoValidate(b *testing.B) {
+	ValidateResults = false
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		RandomBytes(bs)
+		s[n] = BS64(bs)
+	}
+	ValidateResults = true
+}
+
 var somestring = "SomeStaticString"
 
 func BenchmarkGoPrecalculated(b *testing.B) {
@@ -83,4 +111,29 @@ func BenchmarkSDPrecalculated(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		s[n] = S(generated[n%len(generated)])
 	}
+}
+
+func BenchmarkSDPrecalculatedNoValidate(b *testing.B) {
+	ValidateResults = false
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		s[n] = S(generated[n%len(generated)])
+	}
+	ValidateResults = true
+}
+
+func BenchmarkSD64Precalculated(b *testing.B) {
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		s[n] = S64(generated[n%len(generated)])
+	}
+}
+
+func BenchmarkSD64PrecalculatedNoValidate(b *testing.B) {
+	ValidateResults = false
+	var s = make([]string, b.N)
+	for n := 0; n < b.N; n++ {
+		s[n] = S64(generated[n%len(generated)])
+	}
+	ValidateResults = true
 }

@@ -31,4 +31,5 @@ func (wd weakdata) Bytes() []byte {
 }
 
 // Only hardcore programmers beyond this point
-var YesIKnowThisCouldGoHorriblyWrong bool
+var ValidateResults = true
+var YesIKnowThisCouldGoHorriblyWrong = false
