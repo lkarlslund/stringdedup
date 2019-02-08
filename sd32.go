@@ -12,12 +12,14 @@ import (
 var pointermap32 = make(map[uintptr]uint32) // Pointer -> HASH
 var hashmap32 = make(map[uint32]weakdata)   // HASH -> Pointer
 
+// Size returns the number of deduplicated strings currently being tracked in memory
 func Size() int {
 	lock.RLock()
 	defer lock.RUnlock()
 	return len(hashmap32)
 }
 
+// ByteCount returns the number of deduplicated string bytes currently being tracked in memory
 func ByteCount() int {
 	lock.RLock()
 	var bytes int
@@ -28,12 +30,12 @@ func ByteCount() int {
 	return bytes
 }
 
-// Flushes all state information about deduplication
+// Flush clears all state information about deduplication
 func Flush() {
 	lock.Lock()
 
 	// Don't finalize, we don't care about it any more
-	for u, _ := range pointermap32 {
+	for u := range pointermap32 {
 		runtime.SetFinalizer((*byte)(unsafe.Pointer(u)), nil)
 	}
 
@@ -44,7 +46,7 @@ func Flush() {
 	lock.Unlock()
 }
 
-// This copies in to a string if not found
+// BS takes a slice of bytes, and returns a deduplicated string
 func BS(in []byte) string {
 	if len(in) == 0 {
 		// Nothing to see here, move along now
@@ -81,7 +83,7 @@ func BS(in []byte) string {
 	return ws.String()
 }
 
-// Deduplicate given string and return same string with potential savings
+// S takes a string, and returns a deduplicated string
 func S(in string) string {
 	if len(in) == 0 {
 		// Nothing to see here, move along now
@@ -117,7 +119,7 @@ func S(in string) string {
 	return ws.String()
 }
 
-// Deduplicate []byte contents. The []byte you get back, you absolutely CAN NOT make changes to
+// B takes a []byte and returns a deduplicated []byte. The []byte you get back, you absolutely CAN NOT make changes to!
 func B(in []byte) []byte {
 	if !YesIKnowThisCouldGoHorriblyWrong {
 		// You need to at least read this source code to be able to use this :)
