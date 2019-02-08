@@ -24,6 +24,7 @@ func TestGC(t *testing.T) {
 	}
 	lock.RUnlock()
 	s = make([]string, 0)              // Clear our references
+	runtime.KeepAlive(s)               // oh shut up Go Vet
 	runtime.GC()                       // Clean up
 	time.Sleep(time.Millisecond * 100) // Let finalizers run
 	runtime.GC()                       // Clean up
