@@ -12,6 +12,14 @@ import (
 var pointermap64 = make(map[uintptr]uint64) // Pointer -> HASH
 var hashmap64 = make(map[uint64]weakdata)   // HASH -> Pointer
 
+// Size returns the number of deduplicated strings currently being tracked in memory (using 64-bit hash)
+func Size64() int {
+	lock.RLock()
+	defer lock.RUnlock()
+	return len(hashmap64)
+}
+
+// ByteCount64 returns the number of deduplicated string bytes currently being tracked in memory (using 64-bit hash)
 func ByteCount64() int {
 	lock.RLock()
 	var bytes int
@@ -22,12 +30,12 @@ func ByteCount64() int {
 	return bytes
 }
 
-// Flushes all state information about deduplication
+// Flush64 clears all state information about deduplication (using 64-bit hash)
 func Flush64() {
 	lock.Lock()
 
 	// Don't finalize, we don't care about it any more
-	for u, _ := range pointermap64 {
+	for u := range pointermap64 {
 		runtime.SetFinalizer((*byte)(unsafe.Pointer(u)), nil)
 	}
 
@@ -38,7 +46,7 @@ func Flush64() {
 	lock.Unlock()
 }
 
-// This copies in to a string if not found
+// BS64 takes a slice of bytes, and returns a deduplicated string (using 64-bit hash)
 func BS64(in []byte) string {
 	if len(in) == 0 {
 		// Nothing to see here, move along now
@@ -75,7 +83,7 @@ func BS64(in []byte) string {
 	return ws.String()
 }
 
-// Deduplicate given string and return same string with potential savings
+// S64 takes a string, and returns a deduplicated string (using 64-bit hash)
 func S64(in string) string {
 	if len(in) == 0 {
 		// Nothing to see here, move along now
@@ -111,7 +119,7 @@ func S64(in string) string {
 	return ws.String()
 }
 
-// Deduplicate []byte contents. The []byte you get back, you absolutely CAN NOT make changes to
+// B64 takes a []byte and returns a deduplicated []byte. The []byte you get back, you absolutely CAN NOT make changes to! (using 64-bit hash)
 func B64(in []byte) []byte {
 	if !YesIKnowThisCouldGoHorriblyWrong {
 		// You need to at least read this source code to be able to use this :)
