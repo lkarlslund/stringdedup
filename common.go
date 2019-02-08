@@ -31,5 +31,9 @@ func (wd weakdata) Bytes() []byte {
 }
 
 // Only hardcore programmers beyond this point
+
+// ValidateResults ensures that no collisions in returned strings are possible. This is enabled default, but you can speed things up by setting this to false
 var ValidateResults = true
+
+// YesIKnowThisCouldGoHorriblyWrong requires you to read the source code to understand what it does. This is intentional, as usage is only for very specific an careful scenarios
 var YesIKnowThisCouldGoHorriblyWrong = false
