@@ -2,6 +2,11 @@
 
 Easy-peasy string deduplication to Golang. You can implement this in literally 2 minutes. But you might not want to - please read all of this.
 
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/release/lkarlslund/stringdedup.svg)](https://github.com/lkarlslund/stringdedup/releases)
+[![Github All Releases](https://img.shields.io/github/downloads/lkarlslund/stringdedup/total.svg)](http://www.somsubhra.com/github-release-stats/?username=lkarlslund&repository=stringdedup)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lkarlslund/stringdedup)](https://goreportcard.com/report/github.com/lkarlslund/stringdedup) 
+
 ## Why?
 
 In a scenario where you read a lot of data containing repeated freeform strings, unless you do something special, you're wasting a lot of memory. A very simplistic example could be that you are indexing a lot of files - see the example folder in the package.
