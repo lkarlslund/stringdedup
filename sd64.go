@@ -12,7 +12,7 @@ import (
 var pointermap64 = make(map[uintptr]uint64) // Pointer -> HASH
 var hashmap64 = make(map[uint64]weakdata)   // HASH -> Pointer
 
-// Size returns the number of deduplicated strings currently being tracked in memory (using 64-bit hash)
+// Size64 returns the number of deduplicated strings currently being tracked in memory (using 64-bit hash)
 func Size64() int {
 	lock.RLock()
 	defer lock.RUnlock()
@@ -35,8 +35,8 @@ func Flush64() {
 	lock.Lock()
 
 	// Don't finalize, we don't care about it any more
-	for u := range pointermap64 {
-		runtime.SetFinalizer((*byte)(unsafe.Pointer(u)), nil)
+	for _, u := range hashmap64 {
+		runtime.SetFinalizer(&u.Bytes()[0], nil)
 	}
 
 	// Clear maps
@@ -77,7 +77,7 @@ func BS64(in []byte) string {
 	lock.Lock()
 	hashmap64[h] = ws
 	pointermap64[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap64)
+	runtime.SetFinalizer(&buf[0], removefromsmap64)
 	lock.Unlock()
 
 	return ws.String()
@@ -114,7 +114,7 @@ func S64(in string) string {
 	lock.Lock()
 	hashmap64[h] = ws
 	pointermap64[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap64)
+	runtime.SetFinalizer(&buf[0], removefromsmap64)
 	lock.Unlock()
 	return ws.String()
 }
@@ -155,7 +155,7 @@ func B64(in []byte) []byte {
 	lock.Lock()
 	hashmap64[h] = ws
 	pointermap64[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap64)
+	runtime.SetFinalizer(&buf[0], removefromsmap64)
 	lock.Unlock()
 
 	return ws.Bytes()

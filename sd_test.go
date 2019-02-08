@@ -6,6 +6,15 @@ import (
 	"time"
 )
 
+func TestBlankString(t *testing.T) {
+	if S("") != "" {
+		t.Error("Blank string should return blank string (32-bit hash)")
+	}
+	if S64("") != "" {
+		t.Error("Blank string should return blank string (64-bit hash)")
+	}
+}
+
 func TestGC(t *testing.T) {
 	s := make([]string, 100000)
 	for n := 0; n < len(s); n++ {

@@ -35,8 +35,8 @@ func Flush() {
 	lock.Lock()
 
 	// Don't finalize, we don't care about it any more
-	for u := range pointermap32 {
-		runtime.SetFinalizer((*byte)(unsafe.Pointer(u)), nil)
+	for _, u := range hashmap32 {
+		runtime.SetFinalizer(&u.Bytes()[0], nil)
 	}
 
 	// Clear maps
@@ -77,7 +77,7 @@ func BS(in []byte) string {
 	lock.Lock()
 	hashmap32[h] = ws
 	pointermap32[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap32)
+	runtime.SetFinalizer(&buf[0], removefromsmap32)
 	lock.Unlock()
 
 	return ws.String()
@@ -114,7 +114,7 @@ func S(in string) string {
 	lock.Lock()
 	hashmap32[h] = ws
 	pointermap32[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap32)
+	runtime.SetFinalizer(&buf[0], removefromsmap32)
 	lock.Unlock()
 	return ws.String()
 }
@@ -156,7 +156,7 @@ func B(in []byte) []byte {
 	lock.Lock()
 	hashmap32[h] = ws
 	pointermap32[ws.data] = h
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), removefromsmap32)
+	runtime.SetFinalizer(&buf[0], removefromsmap32)
 	lock.Unlock()
 
 	return ws.Bytes()
