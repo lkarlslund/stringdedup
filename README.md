@@ -5,11 +5,33 @@ Easy-peasy string deduplication to Golang. You can implement this in literally 2
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lkarlslund/stringdedup)](https://goreportcard.com/report/github.com/lkarlslund/stringdedup) 
 
+## How
+
+Instanciate a deduplication object by providing a function that takes a []byte slice and returns a hash. As stringdedup is using generics, your returned value type is user specified. For small amounts of strings an uint32 is fine, but you can use uint64 or even a [4]uint64 for a sha256 value. Choose something that is fast ;)
+
+```
+dedup := stringdedup.New(func(in []byte) uint32 {
+	return xxhash.Checksum32(in)
+})
+```
+Every time you encounter a string you want deduplicated, just wrap it in a deduplication call:
+
+```
+deduppedstring := dedup.S(inputstring)
+```
+
+You can also ingest []byte and get a deduplicated string back. This saves an allocation per call, se more detailed example below:
+
+```
+inputdata := []byte{0x01, 0x02, 0x03, 0x04}
+deduppedstring := dedup.BS(inputdata)
+```
+
 ## Why?
 
 In a scenario where you read a lot of data containing repeated freeform strings, unless you do something special, you're wasting a lot of memory. A very simplistic example could be that you are indexing a lot of files - see the example folder in the package.
 
-For my application scanario I get a deduplication ratio of 1:5. 
+I use it in two different projects, and one of them gets a deduplication ratio of 1:5, saving a massive amount of memory. 
 
 The example included shows that things are not black and white. You might gain something by using this package, and you might not. It really depends on what you are doing, and also how you are doing it.
 
@@ -56,19 +78,26 @@ go get github.com/lkarlslund/stringdedup
 - You can talk freely about stringdedup. This is not Fight Club, you know.
 
 ```
-dedupedstring := stringdedup.S(somestring) // input string, get deduplicated string back
+dedup := stringdedup.New(func(in []byte) uint32 {
+	return xxhash.Checksum32(in)
+})
+dedupedstring := dedup.S(somestring) // input string, get deduplicated string back
 ```
+
 That's it! You're now guaranteed that this string only exists once in your program, if all the other string allocations process the same way.
 
 If you're repeatedly reading from the same []byte buffer, you can save an allocation per call this way:
 ```
+dedup := stringdedup.New(func(in []byte) uint32 {
+	return xxhash.Checksum32(in)
+})
 buffer := make([]byte, 16384)
 var mystrings []string
 var err error
 for err == nil {
   _, err = myreader.Read(buffer)
   // do some processing, oh you found something you want to save at buffer[42:103]
-  mystrings = append(mystrings, stringdedup.BS(buffer[42:103])) // BS = input []byte, get deduplicated string back
+  mystrings = append(mystrings, dedup.BS(buffer[42:103])) // BS = input []byte, get deduplicated string back
 } 
 ```
 If you know that you're not going to dedup any of the existing strings in memory again, you can call:
@@ -84,9 +113,8 @@ This package uses some tricks, that *may* break at any time, if the Golang devel
 - Weak references by using a map of uintptr's
 - Strings are removed from the deduplication map by using the SetFinalizer method. That means you can't use SetFinalizer on the strings that you put into or get back from the package. Golang really doesn't want you to use SetFinalizer, they see it as a horrible kludge, but I've found no other way of doing weak references with cleanup
 - The strings are hash indexed via a 32-bit XXHASH. This is not a crypto safe hashing algorithm, but we're not doing this to prevent malicious collisions. This is about statistics, and I'd guess that you would have to store more than 400 million strings before you start to run into problems. Strings are validated before they're returned, so you will never get invalid data back. You could optimize this away if you're feeling really lucky.
-- I added xxxxx64(xxx) variants of most calls, using a 64-bit xxhash.
-- You can choose to purge the deduplication index, to free memory. New deduplicated strings start over, so now you might get duplicate strings anyway. Again, this is for specific scenarios.
+- You can choose to purge the deduplication index by calling Flush() to free memory. New deduplicated strings start over, so now you might get duplicate strings anyway. Again, this is for specific scenarios.
 
-This should work with at least Golang 1.8, 1.9, 1.10 and 1.11 on x86 / x64. Please let me know your experiences.
+This requires Go 1.18 on x86 / x64. Please let me know your experiences.
 
 Twitter: @lkarlslund

@@ -2,9 +2,11 @@ package stringdedup
 
 import (
 	"math/rand"
-	"os"
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/OneOfOne/xxhash"
 )
 
 // const letterBytes = "abcdef"
@@ -33,22 +35,17 @@ func RandomBytes(b []byte) {
 	}
 }
 
-var stringlength = 5
-var totalstrings = 100000
-var generated []string
-
-func generatestrings() {
+func generatestrings(totalstrings, stringlength int) []string {
+	if totalstrings < 1 {
+		totalstrings = 1
+	}
+	generated := make([]string, totalstrings)
 	b := make([]byte, stringlength)
-	generated = make([]string, totalstrings)
 	for i := 0; i < len(generated); i++ {
 		RandomBytes(b)
 		generated[i] = string(b)
 	}
-}
-
-func TestMain(m *testing.M) {
-	generatestrings()
-	os.Exit(m.Run())
+	return generated
 }
 
 var bs = make([]byte, 12)
@@ -61,79 +58,123 @@ func BenchmarkGoRandom(b *testing.B) {
 	}
 }
 
-func BenchmarkSDRandom(b *testing.B) {
+func BenchmarkNSDRandom(b *testing.B) {
+	sd := New(func(in []byte) uint32 {
+		return xxhash.Checksum32(in)
+	})
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
 		RandomBytes(bs)
-		s[n] = BS(bs)
+		s[n] = sd.BS(bs)
 	}
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSDRandomNoValidate(b *testing.B) {
-	ValidateResults = false
+func BenchmarkNSDRandomNoValidate(b *testing.B) {
+	sd := New(func(in []byte) uint32 {
+		return xxhash.Checksum32(in)
+	})
+	sd.DontValidateResults = true
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
 		RandomBytes(bs)
-		s[n] = BS(bs)
+		s[n] = sd.BS(bs)
 	}
-	ValidateResults = true
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSD64Random(b *testing.B) {
+func BenchmarkNSD64Random(b *testing.B) {
+	sd := New(func(in []byte) uint64 {
+		return xxhash.Checksum64(in)
+	})
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
 		RandomBytes(bs)
-		s[n] = BS64(bs)
+		s[n] = sd.BS(bs)
 	}
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSD64RandomNoValidate(b *testing.B) {
-	ValidateResults = false
+func BenchmarkNSD64RandomNoValidate(b *testing.B) {
+	sd := New(func(in []byte) uint64 {
+		return xxhash.Checksum64(in)
+	})
+	sd.DontValidateResults = true
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
 		RandomBytes(bs)
-		s[n] = BS64(bs)
+		s[n] = sd.BS(bs)
 	}
-	ValidateResults = true
+	runtime.KeepAlive(s)
 }
 
 var somestring = "SomeStaticString"
 
 func BenchmarkGoPrecalculated(b *testing.B) {
+	b.StopTimer()
+	generated := generatestrings(b.N/10, 5)
+	b.StartTimer()
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
 		s[n] = generated[n%len(generated)]
 	}
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSDPrecalculated(b *testing.B) {
+func BenchmarkNSDPrecalculated(b *testing.B) {
+	b.StopTimer()
+	generated := generatestrings(b.N/10, 5)
+	b.StartTimer()
+	sd := New(func(in []byte) uint32 {
+		return xxhash.Checksum32(in)
+	})
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
-		s[n] = S(generated[n%len(generated)])
+		s[n] = sd.S(generated[n%len(generated)])
 	}
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSDPrecalculatedNoValidate(b *testing.B) {
-	ValidateResults = false
+func BenchmarkNSDPrecalculatedNoValidate(b *testing.B) {
+	b.StopTimer()
+	generated := generatestrings(b.N/10, 5)
+	b.StartTimer()
+	sd := New(func(in []byte) uint32 {
+		return xxhash.Checksum32(in)
+	})
+	sd.DontValidateResults = true
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
-		s[n] = S(generated[n%len(generated)])
+		s[n] = sd.S(generated[n%len(generated)])
 	}
-	ValidateResults = true
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSD64Precalculated(b *testing.B) {
+func BenchmarkNSD64Precalculated(b *testing.B) {
+	b.StopTimer()
+	generated := generatestrings(b.N/10, 5)
+	b.StartTimer()
+	sd := New(func(in []byte) uint64 {
+		return xxhash.Checksum64(in)
+	})
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
-		s[n] = S64(generated[n%len(generated)])
+		s[n] = sd.S(generated[n%len(generated)])
 	}
+	runtime.KeepAlive(s)
 }
 
-func BenchmarkSD64PrecalculatedNoValidate(b *testing.B) {
-	ValidateResults = false
+func BenchmarkNSD64PrecalculatedNoValidate(b *testing.B) {
+	b.StopTimer()
+	generated := generatestrings(b.N/10, 5)
+	b.StartTimer()
+	sd := New(func(in []byte) uint64 {
+		return xxhash.Checksum64(in)
+	})
+	sd.DontValidateResults = true
 	var s = make([]string, b.N)
 	for n := 0; n < b.N; n++ {
-		s[n] = S64(generated[n%len(generated)])
+		s[n] = sd.S(generated[n%len(generated)])
 	}
-	ValidateResults = true
+	runtime.KeepAlive(s)
 }
