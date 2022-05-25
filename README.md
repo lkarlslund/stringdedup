@@ -70,12 +70,9 @@ Get the package:
 go get github.com/lkarlslund/stringdedup
 ```
 
-### The rules of stringdedup
-- You can *not* dedup a string that is a const string. Your program *will* crash immediately (stringdedup.S("this is fatal"). Special handling is done for "", but that's the only one.
-- When you dedup something, and we don't know about it, it's *always* heap allocated and copied. This is because re-slicing works against deduplication.
+### Using stringdedup
+- When you dedup something, and we don't know about it, it's *always* heap allocated and copied.
 - If you have []byte, you can dedup it to a string in one call (reader.Read(b) -> stringdedup.BS(b))
-- If you're adventurous you can dedup []byte to []byte, but you can *absolutely* not change the []byte you get back. Read the source, Luke.
-- You can talk freely about stringdedup. This is not Fight Club, you know.
 
 ```
 dedup := stringdedup.New(func(in []byte) uint32 {
