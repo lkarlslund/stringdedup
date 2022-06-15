@@ -15,7 +15,6 @@ func New[hashtype comparable](hashfunc func(in []byte) hashtype) *stringDedup[ha
 	var sd stringDedup[hashtype]
 	sd.removefromthismap = generateFinalizerFunc(&sd)
 	sd.hashfunc = hashfunc
-	sd.CalculateStatistics = true
 	return &sd
 }
 
@@ -35,8 +34,9 @@ type stringDedup[hashtype comparable] struct {
 
 	removefromthismap finalizerFunc
 
-	CalculateStatistics bool // Disable for minor performance gain
-	stats               Statistics
+	stats Statistics
+
+	flushing bool
 
 	// DontValidateResults skips collisions check in returned strings
 	DontValidateResults bool // Disable at your own peril, hash collisions will give you wrong strings back
@@ -67,6 +67,8 @@ func (sd *stringDedup[hashtype]) Statistics() Statistics {
 // Flush clears all state information about deduplication
 func (sd *stringDedup[hashtype]) Flush() {
 	// Clear our data
+	sd.flushing = true
+
 	sd.pointermap.Range(func(pointer uintptr, hash hashtype) bool {
 		// Don't finalize, we don't care about it any more
 		runtime.SetFinalizer((*byte)(unsafe.Pointer(pointer)), nil)
@@ -84,6 +86,8 @@ func (sd *stringDedup[hashtype]) Flush() {
 		atomic.AddInt64(&sd.keepaliveitemsremoved, 1)
 		return true
 	})
+
+	sd.flushing = false
 }
 
 // BS takes a slice of bytes, and returns a copy of it as a deduplicated string
@@ -103,10 +107,8 @@ func (sd *stringDedup[hashtype]) S(in string) string {
 	ws, loaded := sd.hashmap.Load(hash)
 
 	if loaded {
-		if sd.CalculateStatistics {
-			atomic.AddInt64(&sd.stats.ItemsSaved, 1)
-			atomic.AddInt64(&sd.stats.BytesSaved, int64(ws.length))
-		}
+		atomic.AddInt64(&sd.stats.ItemsSaved, 1)
+		atomic.AddInt64(&sd.stats.BytesSaved, int64(ws.length))
 		out := ws.String()
 		if !sd.DontValidateResults && out != in {
 			atomic.CompareAndSwapInt64(&sd.stats.FirstCollisionDetected, 0, sd.Size())
@@ -121,10 +123,10 @@ func (sd *stringDedup[hashtype]) S(in string) string {
 	buf := make([]byte, len(in))
 	copy(buf, in)
 	str := castBytesToString(buf)
-	wr := weakString(str)
+	ws = weakString(str)
 
-	sd.hashmap.Store(hash, wr)
-	sd.pointermap.Store(wr.data, hash)
+	sd.hashmap.Store(hash, ws)
+	sd.pointermap.Store(ws.data, hash)
 
 	// We need to keep the string alive
 	if sd.KeepAlive > 0 {
@@ -143,7 +145,7 @@ func (sd *stringDedup[hashtype]) S(in string) string {
 	atomic.AddInt64(&sd.stats.ItemsAdded, 1)
 	atomic.AddInt64(&sd.stats.BytesInMemory, int64(ws.length))
 
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(wr.data)), sd.removefromthismap)
+	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), sd.removefromthismap)
 	runtime.KeepAlive(str)
 	return str
 }
@@ -175,10 +177,15 @@ type finalizerFunc func(*byte)
 
 func generateFinalizerFunc[hashtype comparable](sd *stringDedup[hashtype]) finalizerFunc {
 	return func(in *byte) {
+		if sd.flushing {
+			return // We're flushing, don't bother
+		}
+
 		pointer := uintptr(unsafe.Pointer(in))
 		hash, found := sd.pointermap.Load(pointer)
 		if !found {
 			panic("dedup map mismatch")
+
 		}
 		sd.pointermap.Delete(pointer)
 		sd.hashmap.Delete(hash)
