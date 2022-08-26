@@ -19,6 +19,8 @@ func New[hashtype comparable](hashfunc func(in []byte) hashtype) *stringDedup[ha
 }
 
 type stringDedup[hashtype comparable] struct {
+	stats Statistics // Statistics moved to front to ensure 64-bit alignment even on 32-bit platforms (uses atomic to update)
+
 	pointermap gsync.MapOf[uintptr, hashtype]
 	hashmap    gsync.MapOf[hashtype, weakdata] // key is hash, value is weakdata entry containing pointer to start of string or byte slice *header* and length
 
@@ -33,8 +35,6 @@ type stringDedup[hashtype comparable] struct {
 	hashfunc func([]byte) hashtype
 
 	removefromthismap finalizerFunc
-
-	stats Statistics
 
 	flushing bool
 
