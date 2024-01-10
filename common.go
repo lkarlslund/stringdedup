@@ -1,7 +1,6 @@
 package stringdedup
 
 import (
-	"reflect"
 	"runtime"
 	"sync"
 	"unsafe"
@@ -23,56 +22,35 @@ func (wd weakdata) Pointer() *byte {
 }
 
 func weakString(in string) weakdata {
-	header := (*reflect.StringHeader)(unsafe.Pointer(&in))
 	ws := weakdata{
-		data:   header.Data,
-		length: header.Len,
+		data:   uintptr(unsafe.Pointer(unsafe.StringData(in))),
+		length: len(in),
 	}
 	return ws
 }
 
 func weakBytes(in []byte) weakdata {
-	header := (*reflect.SliceHeader)(unsafe.Pointer(&in))
 	ws := weakdata{
-		data:   header.Data,
-		length: header.Len,
+		data:   uintptr(unsafe.Pointer(&in[0])),
+		length: len(in),
 	}
 	return ws
 }
 
 func (wd weakdata) String() string {
-	var returnstring string
-	synt := (*reflect.StringHeader)(unsafe.Pointer(&returnstring))
-	synt.Data = wd.data
-	synt.Len = wd.length
-	return returnstring
+	return unsafe.String((*byte)(unsafe.Pointer(wd.data)), wd.length)
 }
 
 func (wd weakdata) Bytes() []byte {
-	var returnslice []byte
-	synt := (*reflect.SliceHeader)(unsafe.Pointer(&returnslice))
-	synt.Data = wd.data
-	synt.Len = wd.length
-	synt.Cap = wd.length
-	return returnslice
+	return unsafe.Slice((*byte)(unsafe.Pointer(wd.data)), wd.length)
 }
 
 func castStringToBytes(in string) []byte {
-	var out []byte
-	inh := (*reflect.StringHeader)(unsafe.Pointer(&in))
-	outh := (*reflect.SliceHeader)(unsafe.Pointer(&out))
-	outh.Data = inh.Data
-	outh.Len = inh.Len
-	outh.Cap = inh.Len
-	return out
+	return unsafe.Slice(unsafe.StringData(in), len(in))
 }
 
 func castBytesToString(in []byte) string {
-	var out string
-	inh := (*reflect.SliceHeader)(unsafe.Pointer(&in))
-	outh := (*reflect.StringHeader)(unsafe.Pointer(&out))
-	outh.Data = inh.Data
-	outh.Len = inh.Len
+	out := unsafe.String(&in[0], len(in))
 	runtime.KeepAlive(in)
 	return out
 }

@@ -145,7 +145,7 @@ func (sd *stringDedup[hashtype]) S(in string) string {
 	atomic.AddInt64(&sd.stats.ItemsAdded, 1)
 	atomic.AddInt64(&sd.stats.BytesInMemory, int64(ws.length))
 
-	runtime.SetFinalizer((*byte)(unsafe.Pointer(ws.data)), sd.removefromthismap)
+	runtime.SetFinalizer((*byte)(unsafe.Pointer(&buf[0])), sd.removefromthismap)
 	runtime.KeepAlive(str)
 	return str
 }
@@ -184,8 +184,7 @@ func generateFinalizerFunc[hashtype comparable](sd *stringDedup[hashtype]) final
 		pointer := uintptr(unsafe.Pointer(in))
 		hash, found := sd.pointermap.Load(pointer)
 		if !found {
-			panic("dedup map mismatch")
-
+			panic("dedup map is missing string to remove")
 		}
 		sd.pointermap.Delete(pointer)
 		sd.hashmap.Delete(hash)
